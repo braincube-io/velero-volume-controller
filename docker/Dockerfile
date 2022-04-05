@@ -26,10 +26,10 @@ RUN mv build/velero-volume-controller/velero-volume-controller /go/bin
 FROM alpine:3.10
 WORKDIR /go/bin
 
-# copy the go binaries from the building stage
-COPY --from=0 /go/bin /go/bin
-
 # copy the config files from the current working dir
 COPY examples /velero-volume-controller/examples
+
+# copy the go binaries from the building stage
+COPY --from=0 /go/bin /go/bin
 
 ENTRYPOINT ["./velero-volume-controller", "-c", "/velero-volume-controller/examples/config.yml", "-v", "4", "-logtostderr", "true"]
