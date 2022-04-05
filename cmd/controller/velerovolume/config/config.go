@@ -10,11 +10,13 @@ import (
 )
 
 type VeleroVolumeCfg struct {
-	IncludeNamespaces  string `yaml:"includeNamespaces,omitempty"`
-	ExcludeNamespaces  string `yaml:"excludeNamespaces,omitempty"`
-	IncludeVolumeTypes string `yaml:"includeVolumeTypes,omitempty"`
-	ExcludeVolumeTypes string `yaml:"excludeVolumeTypes,omitempty"`
-	ExcludeJobs        string `yaml:"excludeJobs,omitempty"`
+	IncludeNamespaces     string `yaml:"includeNamespaces,omitempty"`
+	ExcludeNamespaces     string `yaml:"excludeNamespaces,omitempty"`
+	IncludeVolumeTypes    string `yaml:"includeVolumeTypes,omitempty"`
+	ExcludeVolumeTypes    string `yaml:"excludeVolumeTypes,omitempty"`
+	IncludeStorageClasses string `yaml:"includeStorageClasses,omitempty"`
+	ExcludeStorageClasses string `yaml:"excludeStorageClasses,omitempty"`
+	ExcludeJobs           string `yaml:"excludeJobs,omitempty"`
 }
 
 type ClusterServerCfg struct {
@@ -67,11 +69,15 @@ func (c *Config) initializeDefaults() error {
 
 // validate the configuration
 func (c *Config) validate() error {
-	if c.VeleroVolumeCfg.IncludeNamespaces != "" && c.VeleroVolumeCfg.ExcludeNamespaces != "" ||
-		c.VeleroVolumeCfg.IncludeVolumeTypes != "" && c.VeleroVolumeCfg.ExcludeVolumeTypes != "" {
-		return fmt.Errorf("Invalid velero volume resources configurations, please check ...")
+	if c.VeleroVolumeCfg.IncludeNamespaces != "" && c.VeleroVolumeCfg.ExcludeNamespaces != "" {
+		return fmt.Errorf("Invalid configuration : specify only one of IncludeNamespaces or ExcludeNamespaces")
 	}
-	// TODO: other configuration validate ...
+	if c.VeleroVolumeCfg.IncludeVolumeTypes != "" && c.VeleroVolumeCfg.ExcludeVolumeTypes != "" {
+		return fmt.Errorf("Invalid configuration : specify only one of IncludeVolumeTypes or ExcludeVolumeTypes")
+	}
+	if c.VeleroVolumeCfg.IncludeStorageClasses != "" && c.VeleroVolumeCfg.ExcludeStorageClasses != "" {
+		return fmt.Errorf("Invalid configuration : specify only one of IncludeStorageClasses or ExcludeStorageClasses")
+	}
 	return nil
 }
 
