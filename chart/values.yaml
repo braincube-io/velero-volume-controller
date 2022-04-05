@@ -1,0 +1,30 @@
+## @param nameOverride String to partially override resources name (will maintain the release name)
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override resources name
+##
+fullnameOverride: ""
+
+image:
+  repository: braincubeio/velero-volume-controller
+  tag:
+  pullSecret:
+  pullPolicy: IfNotPresent
+replicas: 1
+resources: {}
+securityContext: {}
+
+serviceAccount:
+  create: true
+  name: ""
+rbac:
+  create: true
+
+config:
+  includeNamespaces: ""
+  excludeNamespaces: ""
+  includeVolumeTypes: ""
+  excludeVolumeTypes: secret,configMap,projected,downwardAPI,emptyDir
+  includeStorageClasses: ""
+  excludeStorageClasses: ""
+  excludeJobs:
