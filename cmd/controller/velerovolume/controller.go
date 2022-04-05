@@ -37,6 +37,7 @@ import (
 
 	"github.com/duyanghao/velero-volume-controller/cmd/controller/velerovolume/config"
 	"github.com/duyanghao/velero-volume-controller/pkg/constants"
+	"github.com/duyanghao/velero-volume-controller/pkg/helpers"
 )
 
 // Controller is the controller implementation for Pod resources
@@ -297,16 +298,20 @@ func (c *Controller) checkFilterOptions(pod *corev1.Pod) bool {
 // The logic of AddBackupAnnotationsToPod is kept as simple as possible, which will
 // iterate over all volumes of the pod and add the velero backup annotation to it.
 func (c *Controller) addBackupAnnotationsToPod(pod *corev1.Pod) error {
-	// Iterate over all volumes
 	var veleroBackupAnnotationArray []string
+
+	// Iterate over all volumes
 	for _, volume := range pod.Spec.Volumes {
+		volumeType, err := c.getVolumeType(volume, pod.Namespace)
+		if err != nil {
+			return err
+		}
 		// Check if volume uses persistentVolumeClaim and meets volume type requirements
-		if volume.PersistentVolumeClaim != nil && c.checkVolumeTypeRequirements(constants.VOLUME_TYPE_PERSISTENTVOLUMECLAIM) {
-			klog.V(4).Infof("pod '%s/%s' uses volume '%s' from pvc '%s'", pod.Namespace, pod.Name, volume.Name, volume.PersistentVolumeClaim.ClaimName)
+		if c.checkVolumeTypeRequirements(volumeType, volume.PersistentVolumeClaim != nil) {
 			veleroBackupAnnotationArray = append(veleroBackupAnnotationArray, volume.Name)
 		}
-		// TODO: add other volume types ...
 	}
+
 	if len(veleroBackupAnnotationArray) > 0 {
 		// NEVER modify objects from the store. It's a read-only, local cache.
 		// You can use DeepCopy() to make a deep copy of original object and modify this copy
@@ -336,6 +341,30 @@ func (c *Controller) addBackupAnnotationsToPod(pod *corev1.Pod) error {
 	return nil
 }
 
+// getVolumeType returns the real type of a volume mounted by a pod.
+// If the volume is a persistentVolumeClaim, it returns the underlying type.
+func (c *Controller) getVolumeType(volume corev1.Volume, namespace string) (string, error) {
+	volumeType := helpers.GetVolumeSourceType(volume.VolumeSource)
+	if volumeType == "persistentVolumeClaim" {
+		pvc, err := c.kubeclientset.CoreV1().PersistentVolumeClaims(namespace).Get(
+			context.TODO(),
+			volume.PersistentVolumeClaim.ClaimName,
+			metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		pv, err := c.kubeclientset.CoreV1().PersistentVolumes().Get(
+			context.TODO(),
+			pvc.Spec.VolumeName,
+			metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		volumeType = helpers.GetPersistentVolumeSourceType(pv.Spec.PersistentVolumeSource)
+	}
+	return volumeType, nil
+}
+
 // removeBackupAnnotationsFromPod trys to remove relevant backup annotation from pod.
 // This function aims to avoid the following situations:
 // 1. restic backup PartiallyFailed when pod status changed.
@@ -363,11 +392,11 @@ func (c *Controller) removeBackupAnnotationsFromPod(pod *corev1.Pod) error {
 }
 
 // checkVolumeTypeRequirements is a function that indicates if a volume meets backup volume type requirements
-func (c *Controller) checkVolumeTypeRequirements(volumeType string) bool {
+func (c *Controller) checkVolumeTypeRequirements(volumeType string, isClaim bool) bool {
 	if c.cfg.IncludeVolumeTypes != "" {
 		includeVolumeTypes := strings.Split(c.cfg.IncludeVolumeTypes, ",")
 		for _, vt := range includeVolumeTypes {
-			if vt == volumeType {
+			if strings.EqualFold(vt, volumeType) || (isClaim && vt == constants.VOLUME_TYPE_PERSISTENTVOLUMECLAIM) {
 				return true
 			}
 		}
@@ -375,7 +404,7 @@ func (c *Controller) checkVolumeTypeRequirements(volumeType string) bool {
 	} else if c.cfg.ExcludeVolumeTypes != "" {
 		excludeVolumeTypes := strings.Split(c.cfg.ExcludeVolumeTypes, ",")
 		for _, vt := range excludeVolumeTypes {
-			if vt == volumeType {
+			if strings.EqualFold(vt, volumeType) || (isClaim && vt == constants.VOLUME_TYPE_PERSISTENTVOLUMECLAIM) {
 				return false
 			}
 		}
