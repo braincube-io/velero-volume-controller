@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -22,23 +24,11 @@ type ClusterServerCfg struct {
 	KubeConfig string `yaml:"kubeConfig,omitempty"`
 	// LeaseLock namespace
 	LeaseLockNamespace string `yaml:"leaseLockNamespace,omitempty"`
-	// LeaseLock name
-	LeaseLockName string `yaml:"leaseLockName,omitempty"`
 }
 
 type Config struct {
 	ClusterServerCfg *ClusterServerCfg `yaml:"clusterServerCfg,omitempty"`
 	VeleroVolumeCfg  *VeleroVolumeCfg  `yaml:"veleroVolumeCfg,omitempty"`
-}
-
-// validate the configuration
-func (c *Config) validate() error {
-	if c.VeleroVolumeCfg.IncludeNamespaces != "" && c.VeleroVolumeCfg.ExcludeNamespaces != "" ||
-		c.VeleroVolumeCfg.IncludeVolumeTypes != "" && c.VeleroVolumeCfg.ExcludeVolumeTypes != "" {
-		return fmt.Errorf("Invalid velero volume resources configurations, please check ...")
-	}
-	// TODO: other configuration validate ...
-	return nil
 }
 
 // LoadConfig parses configuration file and returns
@@ -53,8 +43,48 @@ func LoadConfig(path string) (*Config, error) {
 	if err = yaml.Unmarshal(contents, c); err != nil {
 		return nil, fmt.Errorf("Failed to parse configuration, error: %s", err)
 	}
+	c.initializeDefaults()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize default value of configuration : %s", err)
+	}
 	if err = c.validate(); err != nil {
 		return nil, fmt.Errorf("Invalid configuration, error: %s", err)
 	}
 	return c, nil
+}
+
+// initializeDefaults initializes empty settings with default values.
+func (c *Config) initializeDefaults() error {
+	if c.ClusterServerCfg.LeaseLockNamespace == "" {
+		namespace, err := getOperatorNamespace()
+		if err != nil {
+			return err
+		}
+		c.ClusterServerCfg.LeaseLockNamespace = namespace
+	}
+	return nil
+}
+
+// validate the configuration
+func (c *Config) validate() error {
+	if c.VeleroVolumeCfg.IncludeNamespaces != "" && c.VeleroVolumeCfg.ExcludeNamespaces != "" ||
+		c.VeleroVolumeCfg.IncludeVolumeTypes != "" && c.VeleroVolumeCfg.ExcludeVolumeTypes != "" {
+		return fmt.Errorf("Invalid velero volume resources configurations, please check ...")
+	}
+	// TODO: other configuration validate ...
+	return nil
+}
+
+var errNoNamespace = fmt.Errorf("namespace not found for current environment")
+
+func getOperatorNamespace() (string, error) {
+	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", errNoNamespace
+		}
+		return "", err
+	}
+	ns := strings.TrimSpace(string(nsBytes))
+	return ns, nil
 }

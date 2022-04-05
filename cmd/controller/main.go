@@ -19,9 +19,10 @@ package main
 import (
 	"context"
 	"flag"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -94,7 +95,7 @@ func main() {
 	// and fewer objects in the cluster watch "all Leases".
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
-			Name:      cfg.ClusterServerCfg.LeaseLockName,
+			Name:      "velero-volume-controller",
 			Namespace: cfg.ClusterServerCfg.LeaseLockNamespace,
 		},
 		Client: kubeClient.CoordinationV1(),
