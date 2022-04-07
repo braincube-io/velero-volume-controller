@@ -23,7 +23,7 @@ RUN make build
 RUN mv build/velero-volume-controller/velero-volume-controller /go/bin
 
 # Production stage
-FROM alpine:3.10
+FROM alpine:3.15
 WORKDIR /go/bin
 
 # copy the config files from the current working dir
