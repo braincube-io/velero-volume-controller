@@ -1,17 +1,12 @@
-## :warning: End of project :warning:
-
-![development](https://img.shields.io/badge/development-halted-red.svg)
-
-This project has ended since velero v1.5 has already supported the [opt-out approach](https://velero.io/docs/v1.5/restic/), and **all development/maintenance activities have halted**.
-
-As it is free software, people are free and welcome to fork and develop the codebase on their own.
-
----
-
 velero-volume-controller
 ========================
 
 `velero-volume-controller` is a Kubernetes controller for [velero](https://github.com/vmware-tanzu/velero) that detects and adds relevant backup annotation to pods with [volumes](https://kubernetes.io/zh/docs/concepts/storage/volumes/)
+
+## History
+
+This was initially [project maintened by duyanghao](https://github.com/duyanghao/velero-volume-controller).  
+Although velero v1.5 supported the [opt-out approach](https://velero.io/docs/v1.5/restic/) for restis, this project is still useful. Indeed, the opt-out approach allow to backup all volumes using restic whitout needin to annotate the pods. But this does not allow to save some volumes with restic and others with snapshots.
 
 ## Overview
 
