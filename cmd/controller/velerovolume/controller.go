@@ -221,19 +221,10 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
-	if pod.Status.Phase == corev1.PodRunning {
-		// Try to add restic backup annotation to pod when it is running
-		err = c.addBackupAnnotationsToPod(pod)
-		if err != nil {
-			klog.Errorf("failed to add velero restic backup annotation to pod: '%s/%s', error: %s", pod.Namespace, pod.Name, err.Error())
-			return err
-		}
-	} else {
-		// Try to remove restic backup annotation from pod when it is not running anymore
-		err = c.removeBackupAnnotationsFromPod(pod)
-		if err != nil {
-			return err
-		}
+	err = c.addBackupAnnotationsToPod(pod)
+	if err != nil {
+		klog.Errorf("failed to add velero restic backup annotation to pod: '%s/%s', error: %s", pod.Namespace, pod.Name, err.Error())
+		return err
 	}
 
 	return nil
@@ -241,10 +232,6 @@ func (c *Controller) syncHandler(key string) error {
 
 // checkPodRequirements aims to bypass pods that don't meet filter requirements
 func (c *Controller) checkPodRequirements(pod *corev1.Pod) bool {
-	// If pod is pending, we ignore it for moment
-	if pod.Status.Phase == corev1.PodPending {
-		return false
-	}
 
 	// Drop pods controlled by excluding jobs
 	if c.cfg.ExcludeJobs != "" {
